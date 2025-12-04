@@ -1,53 +1,62 @@
-import argparse
+import click
+from datetime import datetime
 from .manager import TaskManager
 
-def main():
-    parser = argparse.ArgumentParser(description="Task Manager CLI")
-    subparsers = parser.add_subparsers(dest="command")
+manager = TaskManager()
 
-    # Add task command
-    add_parser = subparsers.add_parser("add", help="Add a new task")
-    add_parser.add_argument("title", type=str, help="Title of the task")
+@click.group()
+def cli():
+    """Task CLI Manager - manage your tasks easily"""
+    pass
 
-    # List tasks command
-    list_parser = subparsers.add_parser("list", help="List all tasks")
-    list_parser.add_argument("--completed", action="store_true", help="List only completed tasks")
-    list_parser.add_argument("--pending", action="store_true", help="List only pending tasks")
+@cli.command()
+@click.argument("title")
+@click.option("--due", type=click.DateTime(formats=["%Y-%m-%d"]), help="Due date YYYY-MM-DD")
+@click.option("--priority", type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False), default="MEDIUM", help="Priority level")
+def add(title, due, priority):
+    """Add a new task"""
+    task = manager.add_task(title, due_date=due, priority=priority.upper())
+    click.echo(f"Task added: [{task.id}] {task.title} (Priority: {task.priority})")
 
-    # Complete task command
-    complete_parser = subparsers.add_parser("complete", help="Mark a task as completed")
-    complete_parser.add_argument("task_id", type=int, help="ID of the task to complete")
+@cli.command(name="list")
+@click.option("--completed", is_flag=True, help="List only completed tasks")
+@click.option("--pending", is_flag=True, help="List only pending tasks")
+def list_tasks(completed, pending):
+    """List tasks"""
+    if completed:
+        tasks = manager.list_tasks(completed=True)
+    elif pending:
+        tasks = manager.list_tasks(completed=False)
+    else:
+        tasks = manager.list_tasks()
 
-    # Delete task command
-    delete_parser = subparsers.add_parser("delete", help="Delete a task")
-    delete_parser.add_argument("task_id", type=int, help="ID of the task to delete")
+    if not tasks:
+        click.echo("No tasks found.")
+        return
 
-    args = parser.parse_args()
-    manager = TaskManager()
+    for t in tasks:
+        status = "✔ Completed" if t.completed else "✗ Pending"
+        overdue = "⚠ Overdue" if t.is_overdue() else ""
+        due_str = t.due_date.strftime("%Y-%m-%d") if t.due_date else "No due date"
+        click.echo(f"[{t.id}] {t.title} ({status}, Priority: {t.priority}, Due: {due_str}) {overdue}")
 
-    if args.command == "add":
-        task = manager.add_task(args.title)
-        print(f"Added task: {task.id} - {task.title}")
+@cli.command()
+@click.argument("task_id", type=int)
+def complete(task_id):
+    """Mark a task as completed"""
+    if manager.complete_task(task_id):
+        click.echo(f"Task {task_id} marked as completed.")
+    else:
+        click.echo(f"Task {task_id} not found.")
 
-    elif args.command == "list":
-        if args.completed:
-            tasks = manager.list_tasks(completed=True)
-        elif args.pending:
-            tasks = manager.list_tasks(completed=False)
-        else:
-            tasks = manager.list_tasks()
-        for task in tasks:
-            status = "Completed" if task.completed else "Pending"
-            print(f"{task.id}: {task.title} [{status}]")
+@cli.command()
+@click.argument("task_id", type=int)
+def delete(task_id):
+    """Delete a task"""
+    if manager.delete_task(task_id):
+        click.echo(f"Task {task_id} deleted.")
+    else:
+        click.echo(f"Task {task_id} not found.")
 
-    elif args.command == "complete":
-        if manager.complete_task(args.task_id):
-            print(f"Task {args.task_id} marked as completed.")
-        else:
-            print(f"Task {args.task_id} not found.")
-
-    elif args.command == "delete":
-        if manager.delete_task(args.task_id):
-            print(f"Task {args.task_id} deleted.")
-        else:
-            print(f"Task {args.task_id} not found.")
+if __name__ == "__main__":
+    cli()

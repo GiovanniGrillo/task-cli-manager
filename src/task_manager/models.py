@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
+
+PRIORITIES = ("LOW", "MEDIUM", "HIGH")
 
 @dataclass
 class Task:
@@ -9,6 +11,7 @@ class Task:
     completed: bool = False
     created_at: datetime = field(default_factory=datetime.utcnow)
     due_date: Optional[datetime] = None
+    priority: str = "MEDIUM"
 
     def mark_as_completed(self):
         self.completed = True
@@ -17,4 +20,3 @@ class Task:
         if self.due_date and not self.completed:
             return datetime.utcnow() > self.due_date
         return False
-

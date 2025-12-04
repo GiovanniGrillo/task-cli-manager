@@ -1,23 +1,29 @@
 from typing import List, Optional
 from datetime import datetime
-from .models import Task
+from .models import Task, PRIORITIES
 from .storage import load_tasks, save_tasks
 
 class TaskManager:
     def __init__(self):
         self.tasks: List[Task] = load_tasks()
-        self.next_id = self._get_next_id()
+        self.next_id = self._compute_next_id()
 
-    def _get_next_id(self):
+    def _compute_next_id(self) -> int:
         if not self.tasks:
             return 1
         return max(t.id for t in self.tasks) + 1
 
-    def add_task(self, title: str, due_date: Optional[datetime] = None) -> Task:
-        task = Task(id=self.next_id, title=title, due_date=due_date)
+    def _save(self):
+        save_tasks(self.tasks)
+
+    def add_task(self, title: str, due_date: Optional[datetime] = None, priority: str = "MEDIUM") -> Task:
+        if priority not in PRIORITIES:
+            raise ValueError(f"Priority must be one of {PRIORITIES}")
+
+        task = Task(id=self.next_id, title=title, due_date=due_date, priority=priority)
         self.tasks.append(task)
         self.next_id += 1
-        save_tasks(self.tasks)
+        self._save()
         return task
 
     def get_task(self, task_id: int) -> Optional[Task]:
@@ -26,8 +32,8 @@ class TaskManager:
     def complete_task(self, task_id: int) -> bool:
         task = self.get_task(task_id)
         if task:
-            task.mark_as_completed()
-            save_tasks(self.tasks)
+            task.completed = True
+            self._save()
             return True
         return False
 
@@ -40,6 +46,6 @@ class TaskManager:
         task = self.get_task(task_id)
         if task:
             self.tasks.remove(task)
-            save_tasks(self.tasks)
+            self._save()
             return True
         return False

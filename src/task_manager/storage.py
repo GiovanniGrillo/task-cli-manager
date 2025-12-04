@@ -1,48 +1,46 @@
 import json
+from pathlib import Path
 from datetime import datetime
 from typing import List
 from .models import Task
 
-FILE_PATH = "tasks.json"
+STORAGE_FILE = Path(__file__).parent.parent.parent / "tasks.json"
+
+def load_tasks() -> List[Task]:
+    STORAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    
+    if not STORAGE_FILE.exists():
+        return []
+
+    with open(STORAGE_FILE, "r") as f:
+        raw = json.load(f)
+
+    tasks = []
+    for t in raw:
+        tasks.append(
+            Task(
+                id=t["id"],
+                title=t["title"],
+                completed=t["completed"],
+                created_at=datetime.fromisoformat(t["created_at"]),
+                due_date=datetime.fromisoformat(t["due_date"]) if t["due_date"] else None,
+                priority=t.get("priority", "MEDIUM"),
+            )
+        )
+    return tasks
 
 
-def datetime_to_str(dt: datetime):
-    return dt.isoformat() if dt else None
-
-
-def datetime_from_str(s: str):
-    return datetime.fromisoformat(s) if s else None
-
-
-def save_tasks(tasks: List[Task]):
+def save_tasks(tasks: List[Task]) -> None:
     data = []
     for t in tasks:
         data.append({
             "id": t.id,
             "title": t.title,
             "completed": t.completed,
-            "created_at": datetime_to_str(t.created_at),
-            "due_date": datetime_to_str(t.due_date),
+            "created_at": t.created_at.isoformat(),
+            "due_date": t.due_date.isoformat() if t.due_date else None,
+            "priority": t.priority,
         })
-    with open(FILE_PATH, "w") as f:
-        json.dump(data, f, indent=2)
 
-
-def load_tasks() -> List[Task]:
-    try:
-        with open(FILE_PATH, "r") as f:
-            raw = json.load(f)
-    except FileNotFoundError:
-        return []
-
-    tasks = []
-    for d in raw:
-        task = Task(
-            id=d["id"],
-            title=d["title"],
-            completed=d["completed"],
-            created_at=datetime_from_str(d["created_at"]) if d["created_at"] is not None else datetime.now(),
-            due_date=datetime_from_str(d["due_date"]),
-        )
-        tasks.append(task)
-    return tasks
+    with open(STORAGE_FILE, "w") as f:
+        json.dump(data, f, indent=4)
