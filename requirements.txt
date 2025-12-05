@@ -1,1 +1,1 @@
-click #only this dependency is needed ahah 04-12-2025
+click>=8.1.0

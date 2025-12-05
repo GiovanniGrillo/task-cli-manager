@@ -25,36 +25,42 @@ source .venv/bin/activate
 
 pip install -e .
 ```
-
----
-
 ## Usage
 
-Add a task:
-
+### Add a task
 ```bash
-taskcli add "Learn Python" --priority HIGH
+taskcli add "Learn Python" --priority HIGH --due 2025-12-10
 ```
 
-List tasks:
-
+### List all tasks
 ```bash
 taskcli list
 ```
 
-Complete a task:
+### Filter examples
+```bash
+taskcli list --completed
+taskcli list --overdue
+taskcli list --high --sort priority
+```
 
+### Complete a task
 ```bash
 taskcli complete 1
 ```
 
-Delete a task:
-
+### Delete a task
 ```bash
 taskcli delete 1
 ```
 
+### Edit a task
+```bash
+taskcli edit 3 --title "New title" --due 2025-10-05 --priority HIGH
+```
+
 ---
+
 
 ## Data storage
 
