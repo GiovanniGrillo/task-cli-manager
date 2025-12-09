@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 
 PRIORITIES = ("LOW", "MEDIUM", "HIGH")
+RECURRENCES = ("daily", "weekly", "monthly")
 
 @dataclass
 class Task:
@@ -13,6 +14,7 @@ class Task:
     due_date: Optional[datetime] = None
     priority: str = "MEDIUM"
     tags: List[str] = field(default_factory=list)
+    recurrence: Optional[str] = None  # daily, weekly, monthly
 
     def mark_as_completed(self):
         self.completed = True
@@ -23,7 +25,6 @@ class Task:
         return False
 
     def to_dict(self):
-        """Convert the task to a JSON-serializable dict"""
         return {
             "id": self.id,
             "title": self.title,
@@ -32,17 +33,18 @@ class Task:
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "priority": self.priority,
             "tags": self.tags,
+            "recurrence": self.recurrence,
         }
 
     @staticmethod
-    def from_dict(data: dict) -> "Task":
-        """Create a Task from its dictionary form"""
+    def from_dict(data):
         return Task(
             id=data["id"],
             title=data["title"],
-            completed=data["completed"],
-            created_at=datetime.fromisoformat(data["created_at"]),
-            due_date=datetime.fromisoformat(data["due_date"]) if data["due_date"] else None,
+            completed=data.get("completed", False),
+            created_at=datetime.fromisoformat(data.get("created_at")),
+            due_date=datetime.fromisoformat(data["due_date"]) if data.get("due_date") else None,
             priority=data.get("priority", "MEDIUM"),
             tags=data.get("tags", []),
+            recurrence=data.get("recurrence"),
         )
