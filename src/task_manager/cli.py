@@ -6,47 +6,47 @@ manager = TaskManager()
 
 @click.group()
 def cli():
-    """Task CLI Manager - manage your tasks easily"""
+    """Task CLI Manager — manage your tasks easily."""
     pass
 
 
-# ---------------------- ADD ----------------------
+# ADD
 @cli.command()
 @click.argument("title")
 @click.option("--due", type=click.DateTime(formats=["%Y-%m-%d"]), help="Due date YYYY-MM-DD")
-@click.option("--priority", type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False), default="MEDIUM", help="Priority level")
-def add(title, due, priority):
-    """Add a new task"""
-    task = manager.add_task(title, due_date=due, priority=priority.upper())
-    click.echo(f"Task added: [{task.id}] {task.title} (Priority: {task.priority})")
+@click.option("--priority", type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False), default="MEDIUM")
+@click.option("--tags", type=str, help="Comma-separated tags")
+def add(title, due, priority, tags):
+    tag_list = tags.split(",") if tags else []
+    task = manager.add_task(title, due_date=due, priority=priority.upper(), tags=tag_list)
+
+    click.echo(click.style(
+        f"Task added: [{task.id}] {task.title} (Tags: {', '.join(tag_list)})",
+        fg="green"
+    ))
 
 
-# ---------------------- LIST ----------------------
+# LIST
 @cli.command()
-@click.option("--completed", is_flag=True, help="Show only completed tasks")
-@click.option("--pending", is_flag=True, help="Show only pending tasks")
-@click.option("--overdue", is_flag=True, help="Show only overdue tasks")
-@click.option("--today", is_flag=True, help="Show tasks due today")
-@click.option("--high", is_flag=True, help="Show only HIGH priority tasks")
+@click.option("--completed", is_flag=True)
+@click.option("--pending", is_flag=True)
+@click.option("--overdue", is_flag=True)
+@click.option("--today", is_flag=True)
+@click.option("--priority", type=str)
+@click.option("--tag", type=str, help="Filter by tag")
 @click.option(
     "--sort",
     type=click.Choice(["id", "title", "date", "priority"], case_sensitive=False),
-    default="id",
-    help="Sort tasks by a field",
+    default="id"
 )
-def list(completed, pending, overdue, today, high, sort):
-    """List tasks."""
-    manager = TaskManager()
 
-    # Base filtering
-    if completed:
-        tasks = manager.list_tasks(completed=True)
-    elif pending:
-        tasks = manager.list_tasks(completed=False)
-    else:
-        tasks = manager.list_tasks()
+def list(completed, pending, overdue, today, priority, tag, sort):
+    tasks = (
+        manager.list_tasks(completed=True) if completed else
+        manager.list_tasks(completed=False) if pending else
+        manager.list_tasks()
+    )
 
-    # Filters
     if overdue:
         tasks = [t for t in tasks if t.is_overdue()]
 
@@ -56,80 +56,71 @@ def list(completed, pending, overdue, today, high, sort):
             if t.due_date and t.due_date.date() == datetime.utcnow().date()
         ]
 
-    if high:
-        tasks = [t for t in tasks if t.priority == "HIGH"]
+    if priority:
+        tasks = [t for t in tasks if t.priority == priority.upper()]
 
-    # Sorting
+    if tag:
+        tasks = [t for t in tasks if tag in t.tags]
+
+    # ORDERING
     if sort == "title":
-        tasks = sorted(tasks, key=lambda t: t.title.lower())
+        tasks.sort(key=lambda t: t.title.lower())
     elif sort == "date":
-        tasks = sorted(tasks, key=lambda t: (t.due_date is None, t.due_date))
+        tasks.sort(key=lambda t: (t.due_date is None, t.due_date))
     elif sort == "priority":
-        priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-        tasks = sorted(tasks, key=lambda t: priority_order.get(t.priority, 1))
-    else:  # id
-        tasks = sorted(tasks, key=lambda t: t.id)
+        order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        tasks.sort(key=lambda t: order[t.priority])
+    else:
+        tasks.sort(key=lambda t: t.id)
 
-    # Print
+    # PRINT
     for task in tasks:
-        # STATUS
         status_symbol = "✓" if task.completed else " "
+        due = f" | Due: {task.due_date.date()}" if task.due_date else ""
+        tags_str = f" | Tags: {', '.join(task.tags)}" if task.tags else ""
 
-        # COLORS
+        # COLOR LOGIC
         if task.completed:
             color = "green"
         elif task.is_overdue():
             color = "red"
         elif task.priority == "HIGH":
             color = "yellow"
-        elif task.priority == "MEDIUM":
-            color = "blue"
         else:
-            color = "white"
+            color = "blue"
 
-        # DUE DATE
-        due = f" | Due: {task.due_date.date()}" if task.due_date else ""
-
-        line = f"[{status_symbol}] {task.id}: {task.title} (Priority: {task.priority}){due}"
-
+        line = f"[{status_symbol}] {task.id}: {task.title} (Priority: {task.priority}){due}{tags_str}"
         click.echo(click.style(line, fg=color))
 
 
-# ---------------------- COMPLETE ----------------------
+# COMPLETE
 @cli.command()
 @click.argument("task_id", type=int)
 def complete(task_id):
-    """Mark a task as completed"""
     if manager.complete_task(task_id):
-        click.echo(f"Task {task_id} marked as completed.")
+        click.echo(click.style(f"Task {task_id} marked completed!", fg="green"))
     else:
-        click.echo(f"Task {task_id} not found.")
+        click.echo(click.style("Task not found.", fg="red"))
 
 
-# ---------------------- DELETE ----------------------
+# DELETE
 @cli.command()
 @click.argument("task_id", type=int)
 def delete(task_id):
-    """Delete a task"""
     if manager.delete_task(task_id):
-        click.echo(f"Task {task_id} deleted.")
+        click.echo(click.style(f"Task {task_id} deleted.", fg="yellow"))
     else:
-        click.echo(f"Task {task_id} not found.")
+        click.echo(click.style("Task not found.", fg="red"))
 
 
-# ---------------------- EDIT ----------------------
+# EDIT
 @cli.command()
 @click.argument("task_id", type=int)
-@click.option("--title", type=str, help="New title for the task")
-@click.option("--due", type=str, help="New due date (YYYY-MM-DD)")
-@click.option(
-    "--priority",
-    type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False),
-    help="New task priority",
-)
-def edit(task_id, title, due, priority):
-    """Edit a task."""
-    manager = TaskManager()
+@click.option("--title", type=str)
+@click.option("--due", type=str)
+@click.option("--priority", type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False))
+@click.option("--tags", type=str, help="Comma-separated list of tags")
+def edit(task_id, title, due, priority, tags):
     task = manager.get_task(task_id)
 
     if not task:
@@ -154,9 +145,13 @@ def edit(task_id, title, due, priority):
         task.priority = priority.upper()
         updated = True
 
+    if tags:
+        task.tags = tags.split(",")
+        updated = True
+
     if updated:
         manager._save()
-        click.echo(click.style("Task updated successfully.", fg="green"))
+        click.echo(click.style("Task updated!", fg="green"))
     else:
         click.echo(click.style("No changes provided.", fg="yellow"))
 

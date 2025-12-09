@@ -1,0 +1,14 @@
+## TODO — Future Improvements
+
+ ### EASY
+- Add categories/tags for tasks
+- Add recurring tasks (daily/weekly/monthly)
+- Support reminders/notifications
+- Option to export tasks (CSV / Markdown)
+
+ ### SIDE IDEAS
+- Add a TUI (Text User Interface) using rich or textual
+- Add unit tests
+- Sync tasks across devices (local or cloud)
+- Add autocomplete support for shells (bash/zsh)
+- Add "archive" instead of delete
