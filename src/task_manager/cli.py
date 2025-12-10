@@ -15,13 +15,21 @@ def cli():
 @click.argument("title")
 @click.option("--due", type=click.DateTime(formats=["%Y-%m-%d"]), help="Due date YYYY-MM-DD")
 @click.option("--priority", type=click.Choice(["LOW", "MEDIUM", "HIGH"], case_sensitive=False), default="MEDIUM")
+@click.option(
+    "--recurrence",
+    type=click.Choice(["daily", "weekly", "monthly"], case_sensitive=False),
+    help="Set recurring task"
+)
 @click.option("--tags", type=str, help="Comma-separated tags")
-def add(title, due, priority, tags):
+def add(title, due, priority, tags, recurrence):
     tag_list = tags.split(",") if tags else []
-    task = manager.add_task(title, due_date=due, priority=priority.upper(), tags=tag_list)
-
+    task = manager.add_task(
+        title, due_date=due, priority=priority.upper(),
+        tags=tag_list, recurrence=recurrence
+    )
     click.echo(click.style(
-        f"Task added: [{task.id}] {task.title} (Tags: {', '.join(tag_list)})",
+        f"Task added: [{task.id}] {task.title} (Tags: {', '.join(tag_list)})"
+        + (f" | Recurs: {recurrence}" if recurrence else ""),
         fg="green"
     ))
 
