@@ -1,7 +1,5 @@
-## TODO — Future Improvements
 
  ### EASY
-- Add categories/tags for tasks
 - Add recurring tasks (daily/weekly/monthly)
 - Support reminders/notifications
 - Option to export tasks (CSV / Markdown)
