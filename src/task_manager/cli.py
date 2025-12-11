@@ -1,8 +1,14 @@
 import click
 from datetime import datetime
 from .manager import TaskManager
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+
 
 manager = TaskManager()
+console = Console()
+
 
 @click.group()
 def cli():
@@ -47,30 +53,25 @@ def add(title, due, priority, tags, recurrence):
     type=click.Choice(["id", "title", "date", "priority"], case_sensitive=False),
     default="id"
 )
-
 def list(completed, pending, overdue, today, priority, tag, sort):
+    """List tasks in a nice table with colors"""
     tasks = (
         manager.list_tasks(completed=True) if completed else
         manager.list_tasks(completed=False) if pending else
         manager.list_tasks()
     )
 
+    # FILTERS
     if overdue:
         tasks = [t for t in tasks if t.is_overdue()]
-
     if today:
-        tasks = [
-            t for t in tasks
-            if t.due_date and t.due_date.date() == datetime.utcnow().date()
-        ]
-
+        tasks = [t for t in tasks if t.due_date and t.due_date.date() == datetime.utcnow().date()]
     if priority:
         tasks = [t for t in tasks if t.priority == priority.upper()]
-
     if tag:
         tasks = [t for t in tasks if tag in t.tags]
 
-    # ORDERING
+    # SORTING
     if sort == "title":
         tasks.sort(key=lambda t: t.title.lower())
     elif sort == "date":
@@ -81,25 +82,27 @@ def list(completed, pending, overdue, today, priority, tag, sort):
     else:
         tasks.sort(key=lambda t: t.id)
 
-    # PRINT
-    for task in tasks:
-        status_symbol = "✓" if task.completed else " "
-        due = f" | Due: {task.due_date.date()}" if task.due_date else ""
-        tags_str = f" | Tags: {', '.join(task.tags)}" if task.tags else ""
+    # TABLE
+    table = Table(title="Tasks")
+    table.add_column("ID", justify="right", style="cyan")
+    table.add_column("Title", style="magenta")
+    table.add_column("Priority", justify="center", style="green")
+    table.add_column("Due Date", justify="center", style="yellow")
+    table.add_column("Tags", style="blue")
+    table.add_column("Status", justify="center")
 
-        # COLOR LOGIC
-        if task.completed:
-            color = "green"
-        elif task.is_overdue():
-            color = "red"
-        elif task.priority == "HIGH":
-            color = "yellow"
-        else:
-            color = "blue"
+    for t in tasks:
+        status = "✓ Completed" if t.completed else "⏰ Overdue" if t.is_overdue() else "Pending"
+        table.add_row(
+            str(t.id),
+            t.title,
+            t.priority,
+            t.due_date.date().isoformat() if t.due_date else "",
+            ", ".join(t.tags),
+            status
+        )
 
-        line = f"[{status_symbol}] {task.id}: {task.title} (Priority: {task.priority}){due}{tags_str}"
-        click.echo(click.style(line, fg=color))
-
+    console.print(table)
 
 # COMPLETE
 @cli.command()
